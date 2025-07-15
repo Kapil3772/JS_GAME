@@ -863,8 +863,8 @@ class Executioner extends PhysicsEntity {
     this.currentAnim = null;
     this.hurtTimer = 0;
     this.attacks = [
-    { action: "attack1", duration: 110, hitboxDur: [70, 80], hitboxSize: [120, 250], damage: 9, knockBack:[0,-5]},
-    { action: "attack2", duration: 90, hitboxDur: [20, 30], hitboxSize: [145, 200], damage: 12, knockBack:[6,-4]},
+    { action: "attack1", duration: 110, hitboxDur: [70, 80], hitboxSize: [120, 250], damage: 50, knockBack:[0,-5]},
+    { action: "attack2", duration: 90, hitboxDur: [20, 30], hitboxSize: [145, 200], damage: 50, knockBack:[6,-4]},
     ];
     this.hammerHitbox = null;
   }
@@ -879,7 +879,9 @@ class Executioner extends PhysicsEntity {
     this.attacking = attackData.duration;
     this.currentAnim = attackData.action;
     this.frameCounter = 0; //Resetting frame at start of each attack
-    this.setAction(this.currentAnim);
+    if(!this.died) {
+      this.setAction(this.currentAnim);
+    }
     this.dealtDamage = false;
     // Move to next attack in combo
     this.currentAttackIndex = this.nextAttackIndex;
@@ -960,6 +962,9 @@ class Executioner extends PhysicsEntity {
 class Player extends PhysicsEntity {
   constructor(game, pos, size) {
     super(game, "player", pos, size);
+    this.health = 200;
+    this.died = false;
+    this.deathTimer = 0;
     this.airTime = 0;
     this.animOffset = [-48, -67];
     this.sizeOffset = [95, 80];
@@ -974,9 +979,9 @@ class Player extends PhysicsEntity {
     this.currentAttackIndex = 0;
     this.currentAnim = null;
     this.attacks = [
-    { action: "attack1", duration: 35 , hitboxDur: [18, 24], hitboxSize: [27,40]},
-    { action: "attack2", duration: 35 ,hitboxDur: [18, 24], hitboxSize: [27,40]},
-    { action: "attack3", duration: 40 ,hitboxDur: [18, 24], hitboxSize: [33,60]}
+    { action: "attack1", duration: 35 , hitboxDur: [18, 24], hitboxSize: [37,40]},
+    { action: "attack2", duration: 35 ,hitboxDur: [18, 24], hitboxSize: [34,40]},
+    { action: "attack3", duration: 40 ,hitboxDur: [18, 24], hitboxSize: [43,70]}
     ];
     this.comboTimer = 60;
     this.atkHitbox = null;
@@ -1033,9 +1038,9 @@ class Player extends PhysicsEntity {
     ];
     const hPos = [0, this.rect().centerY - hSize[1] / 2];
     if(this.flip) {
-      hPos[0] = this.rect().left() - hSize[0];
+      hPos[0] = this.rect().centerX - hSize[0];
     } else{
-      hPos[0] = this.rect().right();
+      hPos[0] = this.rect().centerX;
     }
     const rect = new Rect(hPos[0], hPos[1], hSize[0], hSize[1]);
     return rect;
@@ -1043,7 +1048,8 @@ class Player extends PhysicsEntity {
   
   takeDamage(damage, screenShake = 0, knockBack=[0,0], flip = null) {
   if (this.invincible) return;
-  
+  this.health -= damage;
+  console.log("player Health", this.health);
   this.game.screenShake = screenShake;
   this.invincible = 30;
   this.hurtTimer = 32;
@@ -1064,6 +1070,7 @@ class Player extends PhysicsEntity {
     if(this.dashAttack) this.dashAttack -= 1;
     if(this.strongAttack) this.strongAttack -= 1;
     if(this.hurtTimer) this.hurtTimer -= 1;
+    if(this.deathTimer) this.deathTimer -= 1;
     if(this.comboTimer) {
       this.comboTimer = Math.max(0, this.comboTimer - 1);
       if(this.comboTimer === 0) {
@@ -1091,6 +1098,17 @@ class Player extends PhysicsEntity {
     }
     this.wallSlide = false;
     
+    if(this.health <= 0 && !this.died) {
+      this.died = true;
+    }
+    if (this.died && this.grounded) {
+      if(!this.deathTimer) {
+        this.deathTimer = 71;
+      }
+      if(this.deathTimer == 1) {
+        this.game.dead = 1;
+      }
+    }
     //Animation Logic
     
     
@@ -1111,7 +1129,10 @@ class Player extends PhysicsEntity {
     if(this.doubleTapCounter==2 && this.attackPressed && this.grounded) {
       this.dashAttack = 96;
     }
-    
+    if(this.deathTimer) {
+      this.setAction("death");
+    }
+    else if(!this.deathTimer && !this.died) {
     if(this.hurtTimer) {
       this.setAction("hurt");
     }
@@ -1214,6 +1235,7 @@ class Player extends PhysicsEntity {
         this.game.particles.push(new Particle(this.game, 'dash', pPos, pVelocity, Math.floor(Math.random() * 8)));
       }
     }
+    }
     
     if(this.velocity[0] > 0)
     {
@@ -1230,14 +1252,15 @@ class Player extends PhysicsEntity {
   
   render(surf, offset = [0, 0]) {
     super.render(surf, offset);
-    /*if(this.atkHitbox){
+    if(this.atkHitbox){
       surf.fillStyle = "green";
       surf.fillRect(this.atkHitbox.x - offset[0], this.atkHitbox.y - offset[1], this.atkHitbox.width, this.atkHitbox.height);
-    }*/
+    }
   }
   
   jump()
-  {
+  { 
+    if(!this.died){
     if(this.wallSlide)
     {
       if(this.flip && this.lastMovement[0] < 0)
@@ -1260,7 +1283,7 @@ class Player extends PhysicsEntity {
       this.jumps -= 1;
       this.airTime = 5;
       return true;
-    }
+    }}
   }
   
   dash()
@@ -1306,7 +1329,7 @@ class Game {
     this.transitionSurf.height = this.virtualHeight;
     this.tCtx = this.transitionSurf.getContext("2d");
     this.running = false;
-    this.currentLevel = 0;
+    this.currentLevel = 3;
 
     this.movement = [false, false];
     
@@ -1330,6 +1353,7 @@ class Game {
       playerrun: new Animation(await cutImages("entities/player1/run.png", 8), 7),
       playerjump: new Animation(await cutImages("entities/player1/jump.png", 3), 24),
       playerdash: new Animation(await cutImages("entities/player1/dash.png", 7), 7),
+      playerdeath: new Animation(await cutImages("entities/player1/death.png", 10), 7),
       playerhurt: new Animation(await cutImages("entities/player1/hurt.png", 4), 8, false),
       playerattack1: new Animation(await cutImages("entities/player1/attack1.png", 5), 8),
       playerattack2: new Animation(await cutImages("entities/player1/attack2.png", 5), 8),
@@ -1390,6 +1414,8 @@ class Game {
     
     //player reset
     this.player.strongAttack = 0;
+    this.player.health = 200;
+    this.player.died = false;
     
     this.leafSpawnners = [];
     for(let tree of this.tilemap.extract([["large_decor", 2]], true))
@@ -1429,7 +1455,7 @@ class Game {
     this.lastTime = currentTime;
     
     
-    if(!this.enemies.length)
+    if(!this.enemies.length && this.currentLevel != 3)
     {
       this.transition = Math.min(50, this.transition + 1);
       if(this.transition >= 30) {
