@@ -863,8 +863,8 @@ class Executioner extends PhysicsEntity {
     this.currentAnim = null;
     this.hurtTimer = 0;
     this.attacks = [
-    { action: "attack1", duration: 110, hitboxDur: [70, 80], hitboxSize: [120, 250], damage: 50, knockBack:[0,-5]},
-    { action: "attack2", duration: 90, hitboxDur: [20, 30], hitboxSize: [145, 200], damage: 50, knockBack:[6,-4]},
+    { action: "attack1", duration: 110, hitboxDur: [70, 80], hitboxSize: [120, 250], damage: 10, knockBack:[0,-5]},
+    { action: "attack2", duration: 90, hitboxDur: [20, 30], hitboxSize: [145, 200], damage: 10, knockBack:[6,-4]},
     ];
     this.hammerHitbox = null;
   }
@@ -1278,7 +1278,18 @@ class Player extends PhysicsEntity {
     //bar fill
     const maxHealth = 200;
     const hpWidth = Math.max(0, (this.healthBar.width / maxHealth) * this.health);
-    surf.fillStyle = "green";
+    const hpPercentage = Math.floor((this.health/maxHealth) * 100);
+    if(hpPercentage > 80) {
+      surf.fillStyle = "#4CAF50";
+    } else if (hpPercentage > 60) {
+      surf.fillStyle = '#CDDC39';
+    } else if (hpPercentage > 40) {
+      surf.fillStyle = "#FFC107";
+    } else if (hpPercentage > 20) {
+      surf.fillStyle = "#FF5722";
+    } else {
+      surf.fillStyle = "#F44336";
+    }
     surf.fillRect(this.healthBar.x, this.healthBar.y, hpWidth, this.healthBar.height);
   }
   
