@@ -854,6 +854,14 @@ class Executioner extends PhysicsEntity {
     this.animOffset = [-100, -102];
     this.sizeOffset = [200, 150];
     this.xSpeed = 0.8;
+    this.health = 500;
+    this.healthBar = new Rect(this.game.virtualWidth / 2 - 150,
+      50,
+      300,
+      15
+    );
+    this.deathTimer = 0;
+    this.died = false;
     this.walkShake = 0;
     this.attacking = 0;
     this.dealtDamage = false;
@@ -862,13 +870,14 @@ class Executioner extends PhysicsEntity {
     this.comboTimer = 290;
     this.currentAnim = null;
     this.hurtTimer = 0;
+    this.invincible = 0;
     this.attacks = [
     { action: "attack1", duration: 110, hitboxDur: [70, 80], hitboxSize: [120, 250], damage: 10, knockBack:[0,-5]},
     { action: "attack2", duration: 90, hitboxDur: [20, 30], hitboxSize: [145, 200], damage: 10, knockBack:[6,-4]},
     ];
     this.hammerHitbox = null;
   }
-    attack() {
+  attack() {
     if (this.attacking) return;
   
     // Reset combo if time ran out
@@ -885,7 +894,7 @@ class Executioner extends PhysicsEntity {
     this.dealtDamage = false;
     // Move to next attack in combo
     this.currentAttackIndex = this.nextAttackIndex;
-    this.nextAttackIndex = (this.nextAttackIndex + 1) % this.attacks.length;
+    this.nextAttackIndex = (this.currentAttackIndex + 1) % this.attacks.length;
     // Reset combo timer
     this.comboTimer = 290;
   }
@@ -905,20 +914,43 @@ class Executioner extends PhysicsEntity {
     const rect = new Rect(hPos[0], hPos[1], hSize[0], hSize[1]);
     return rect;
   }
-
+  takeDamage(damage, screenShake = 0, knockBack = [0, 0], flip = null) {
+    if (this.invincible) return;
+    this.health = Math.max(0, this.health - damage);
+    this.game.screenShake = screenShake;
+    this.invincible = 30;
+    this.hurtTimer = 32;
+    if (flip !== null) {
+    this.velocity[0] = knockBack[0] * (flip ? -1 : 1);
+    this.velocity[1] = knockBack[1];
+    }
+  }
   update(tilemap, movement=[0, 0]) {
     super.update(tilemap, movement);
+    console.log(this.health);
     if(this.attacking) this.attacking -= 1;
     if(this.comboTimer) this.comboTimer -= 1;
     if(this.hurtTimer) this.hurtTimer -= 1;
+    if(this.invincible) this.invincible -= 1;
+    if(this.deathTimer) this.deathTimer -= 1;
     if(movement[0] != 0) this.flip = !this.flip;
     //Resetting till here
-    
+    if(!this.health && !this.died) {
+      this.deathTimer = 154;
+      this.died = true;
+    }
+    //Removing exectioner once it dies
+    if(this.deathTimer == 1) {
+      this.game.executioner = null;
+    }
     //Attacking logic
     if(this.attacking === 0 &&(this.pos[0] < this.game.player.pos[0] && this.flip || this.pos[0] > this.game.player.pos[0] && !this.flip)) {
         this.attack();
     }
-    if(this.attacking) {
+    if (this.deathTimer) {
+      this.setAction("death");
+    }
+    else if(this.attacking) {
       this.frameCounter += 1;
       if(this.frameCounter <= this.attacks[this.currentAttackIndex].hitboxDur[1] && this.frameCounter >= this.attacks[this.currentAttackIndex].hitboxDur[0]) {
         this.hammerHitbox = this.getHitbox();
@@ -956,6 +988,18 @@ class Executioner extends PhysicsEntity {
       surf.strokeStyle = "green";
       surf.strokeRect(this.hammerHitbox.x - offset[0], this.hammerHitbox.y - offset[1], this.hammerHitbox.width, this.hammerHitbox.height);
     }
+    //Render Executioner healthBar
+    //border
+    surf.fillStyle = "black";
+    surf.fillRect(this.healthBar.x - 1,this.healthBar.y - 1,this.healthBar.width + 2, this.healthBar.height + 2);
+    //background
+    surf.fillStyle = "grey";
+    surf.fillRect(this.healthBar.x, this.healthBar.y, this.healthBar.width, this.healthBar.height);
+    //health fill
+    const hpPercentage = Math.floor((this.health / 500) * 100);
+    const hpWidth = 300 * (hpPercentage /100);
+    surf.fillStyle = "#990000";
+    surf.fillRect(this.healthBar.x, this.healthBar.y, hpWidth, this.healthBar.height);
   }
 }
 
@@ -963,7 +1007,7 @@ class Player extends PhysicsEntity {
   constructor(game, pos, size) {
     super(game, "player", pos, size);
     this.health = 200;
-    this.healthBar = new Rect(20,600,200,20);
+    this.healthBar = new Rect(30,600,200,20);
     this.died = false;
     this.deathTimer = 0;
     this.airTime = 0;
@@ -978,11 +1022,12 @@ class Player extends PhysicsEntity {
     this.attacking = 0;
     this.frameCounter = 0;
     this.currentAttackIndex = 0;
+    this.nextAttackIndex = 0;
     this.currentAnim = null;
     this.attacks = [
-    { action: "attack1", duration: 35 , hitboxDur: [18, 24], hitboxSize: [37,40]},
-    { action: "attack2", duration: 35 ,hitboxDur: [18, 24], hitboxSize: [34,40]},
-    { action: "attack3", duration: 40 ,hitboxDur: [18, 24], hitboxSize: [43,70]}
+    { action: "attack1", duration: 35 , hitboxDur: [18, 24], hitboxSize: [37,40], damage: 12},
+    { action: "attack2", duration: 35 ,hitboxDur: [18, 24], hitboxSize: [34,40], damage: 18},
+    { action: "attack3", duration: 40 ,hitboxDur: [18, 24], hitboxSize: [43,70], damage: 30}
     ];
     this.comboTimer = 60;
     this.atkHitbox = null;
@@ -1000,17 +1045,17 @@ class Player extends PhysicsEntity {
     this.attackPressed = true;
   
     // Reset combo if time ran out
-    if (this.comboTimer <= 0) this.currentAttackIndex = 0;
+    if (this.comboTimer <= 0) this.nextAttackIndex = 0;
   
     // Set current attack
-    const attackData = this.attacks[this.currentAttackIndex];
+    const attackData = this.attacks[this.nextAttackIndex];
     this.attacking = attackData.duration;
     this.currentAnim = attackData.action;
     this.frameCounter = 0; //Resetting frame at start of each attack
     this.setAction(this.currentAnim);
-  
+    this.currentAttackIndex = this.nextAttackIndex;
     // Move to next attack in combo
-    this.currentAttackIndex = (this.currentAttackIndex + 1) % this.attacks.length;
+    this.nextAttackIndex = (this.currentAttackIndex + 1) % this.attacks.length;
     // Reset combo timer
     this.comboTimer = 60;
   }
@@ -1049,8 +1094,7 @@ class Player extends PhysicsEntity {
   
   takeDamage(damage, screenShake = 0, knockBack=[0,0], flip = null) {
   if (this.invincible) return;
-  this.health -= damage;
-  console.log("player Health", this.health);
+  this.health = Math.max(0, this.health - damage);
   this.game.screenShake = screenShake;
   this.invincible = 30;
   this.hurtTimer = 32;
@@ -1076,7 +1120,7 @@ class Player extends PhysicsEntity {
     if(this.comboTimer) {
       this.comboTimer = Math.max(0, this.comboTimer - 1);
       if(this.comboTimer === 0) {
-        this.currentAttackIndex = 0;
+        this.nextAttackIndex = 0;
       }
     }
     if(this.doubleTapTimer) {
@@ -1189,12 +1233,14 @@ class Player extends PhysicsEntity {
         this.setAction("dash");
       }
     } else if (this.attacking) {
-      if(this.frameCounter >= this.attacks[Math.max(this.currentAttackIndex -1 , 0)].hitboxDur[0] && this.frameCounter <= this.attacks[Math.max(this.currentAttackIndex -1 , 0)].hitboxDur[1]) {
+      if(this.frameCounter >= this.attacks[this.currentAttackIndex].hitboxDur[0] && this.frameCounter <= this.attacks[this.currentAttackIndex].hitboxDur[1]) {
         this.atkHitbox = this.getHitbox();
         if(this.game.executioner) {
         if(this.atkHitbox.collideRect(this.game.executioner.rect())) {
           if(!this.game.executioner.hurtTimer) {
             this.game.executioner.hurtTimer = 30;
+            this.game.executioner.takeDamage(this.attacks[this.currentAttackIndex].damage);
+            console.log(this.attacks[this.currentAttackIndex].action);
           }
         }}
       }
@@ -1411,7 +1457,7 @@ class Game {
       executionerattack1: new Animation(await cutImages("entities/executioner/attack1.png", 11), 10),
       executionerattack2: new Animation(await cutImages("entities/executioner/attack2.png", 9), 10),
       executionerhurt: new Animation(await cutImages("entities/executioner/hurt.png", 6), 5, false),
-      executionerdeath: new Animation(await cutImages("entities/executioner/death.png", 11), 12),
+      executionerdeath: new Animation(await cutImages("entities/executioner/death.png", 11), 14, false),
     };
     
     /*this.audioCtx = new(window.AudioContext || window.webkitAudioContext)();*/
