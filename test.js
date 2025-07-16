@@ -1315,9 +1315,11 @@ class Game {
     this.canvas.height = this.canvas.clientHeight;
     this.ctx = this.canvas.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
-
-    this.virtualWidth = 360;
-    this.virtualHeight = 640;
+    
+    //actual width= 360 ,height = 640
+    this.virtualWidth = this.canvas.width;
+    this.virtualHeight = this.canvas.height;
+    
     this.virtualCanvas = document.createElement("canvas");
     this.virtualCanvas.width = this.virtualWidth;
     this.virtualCanvas.height = this.virtualHeight;
@@ -1329,7 +1331,7 @@ class Game {
     this.transitionSurf.height = this.virtualHeight;
     this.tCtx = this.transitionSurf.getContext("2d");
     this.running = false;
-    this.currentLevel = 3;
+    this.currentLevel = 0;
 
     this.movement = [false, false];
     
@@ -1706,6 +1708,13 @@ class Game {
       Math.floor(this.virtualWidth * scale),
       Math.floor(this.virtualHeight * scale)
     );
+   /* this.ctx.drawImage(
+  this.virtualCanvas,
+  Math.floor(offsetX) + screenShakeOffset[0],
+  Math.floor(offsetY) + screenShakeOffset[1],
+  this.canvas.width,
+  this.canvas.height
+);*/
   }
 }
 
@@ -1715,11 +1724,6 @@ window.addEventListener("load", () => {
     const game = new Game("gameCanvas");
     await game.assetLoadAll();
     
-    /*document.body.addEventListener("touchstart", () => {
-      game.sfx.bg.loop = true;
-      game.sfx.bg.volume = 0.5;
-      game.sfx.bg.play();
-      }, { once: true });*/
     document.getElementById("leftBtn").addEventListener("touchstart", () => {
       game.movement[0] = true;
       if(!game.player.doubleTapTimer) {

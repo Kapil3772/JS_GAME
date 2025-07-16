@@ -1,59 +1,94 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100vh;
-  background: #000;
+  height: 100%;
   overflow: hidden;
 }
 
-#ui {
-  width: 100%;
-  height: 200px;
+canvas {
   display: block;
-  background-color: dimgrey;
+  width: 100vw;
+  height: 100vh;
+  background: #222;
+  image-rendering: pixelated;
+}
+
+#ui {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30vh;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px; /* spacing between buttons */
-}
-
-.ui-elem {
-  width : 40%;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-canvas {
-  flex-grow: 1;
-  background: #222;
-  image-rendering: pixelated;
-  height: 80%;
-  width: 100vw;
+  padding: 2vh 4vw;
+  box-sizing: border-box;
+  pointer-events: none; /* Allows clicks only on buttons */
 }
 
 /* Button styling */
+.ui-elem {
+  display: flex;
+  gap: 2vw;
+  pointer-events: auto; /* Re-enable button click */
+}
+
 .btn {
-  width: 60px;
-  height: 60px;
-  margin-left: 10px;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 30%;
+  width: 14vw;
+  height: 14vw;
+  max-width: 80px;
+  max-height: 80px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  border:2px solid #00162E;
+  font-size: 6vw;
   color: black;
-  font-size: 28px;
   display: flex;
   justify-content: center;
   align-items: center;
-  line-height: 60px;
   user-select: none;
 }
 
-#attackBtn {
+#ui-elem-left {
   position: absolute;
-  right: 30px;
-  bottom: 90px;
+  bottom: 6vh;
+}
+#ui-elem-right {
+  background-color: blue;
+  flex-flow: column;
+}
+#attackBtn,#dashBtn,#jumpBtn,#ultBtn {
+  position: absolute;
+  right: 5vw;
+
+}
+#attackBtn{
+  width: 100px;
+  height: 100px;
+  right: 5vw;
+}
+#jumpBtn{
+  width: 60px;
+  height: 60px;
+  right: 28vw;
+  bottom: 1vh;
+}
+#dashBtn {
+  width: 65px;
+  height: 65px;
+  right: 28vw;
+  bottom: 10vh;
 }
 #ultBtn {
-  position: absolute;
-  right: 110px;
-  bottom: 90px;
+  width: 60px;
+  height: 60px;
+  right: 13vw;
+  bottom: 16vh;
 }
+#leftBtn,#rightBtn {
+  width: 70px;
+  height: 70px;
+}
+
+
