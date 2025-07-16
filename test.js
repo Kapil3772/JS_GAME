@@ -963,6 +963,7 @@ class Player extends PhysicsEntity {
   constructor(game, pos, size) {
     super(game, "player", pos, size);
     this.health = 200;
+    this.healthBar = new Rect(20,600,200,20);
     this.died = false;
     this.deathTimer = 0;
     this.airTime = 0;
@@ -986,7 +987,7 @@ class Player extends PhysicsEntity {
     this.comboTimer = 60;
     this.atkHitbox = null;
     this.doubleTapCounter = 0;
-    this.doubleTapTimer = 90;
+    this.doubleTapTimer = 120;
     this.attackPressed = false;
     this.dashAttack = 0;
     this.strongAttack = 0;
@@ -1062,6 +1063,7 @@ class Player extends PhysicsEntity {
   update(tilemap, movement=[0, 0])
   {
     if(this.attacking) movement = [movement[0] * 0.5, 0];
+    if(this.died) movement = [0, 0];
     super.update(tilemap, movement);
     //Resetting counters
     this.atkHitbox = null;
@@ -1127,7 +1129,7 @@ class Player extends PhysicsEntity {
     }
     
     if(this.doubleTapCounter==2 && this.attackPressed && this.grounded) {
-      this.dashAttack = 96;
+      this.dashAttack = 72;
     }
     if(this.deathTimer) {
       this.setAction("death");
@@ -1163,15 +1165,24 @@ class Player extends PhysicsEntity {
         this.dashAttack = 0;
       }
       this.setAction("dashAttack");
-      if (this.dashAttack == 60) {
+      if (this.dashAttack == 40) {
         this.velocity[0] = this.flip?-10:10;
       }
-      if(this.dashAttack <= 24) {
+      if(this.dashAttack <= 16) {
         if(this.flip) {
-          this.velocity[0] = Math.min(0, this.velocity[0] + 0.2);
+          this.velocity[0] = Math.min(0, this.velocity[0] + 0.4);
         } else {
-          this.velocity[0] = Math.max(0, this.velocity[0] - 0.2);
+          this.velocity[0] = Math.max(0, this.velocity[0] - 0.4);
         }
+      }
+      if(this.dashAttack > 16 && this.dashAttack < 40) {
+        let hPos = [0,this.rect().y];
+        if(this.flip) {
+          hPos[0] = this.rect().left() - 20;
+        } else {
+          hPos[0] = this.rect().right();
+        }
+        this.atkHitbox = new Rect(hPos[0], hPos[1], 20, this.size[1]);
       }
     }else if (Math.abs(this.dashing) > 50) {
       if (this.action !== "dash") {
@@ -1256,6 +1267,19 @@ class Player extends PhysicsEntity {
       surf.fillStyle = "green";
       surf.fillRect(this.atkHitbox.x - offset[0], this.atkHitbox.y - offset[1], this.atkHitbox.width, this.atkHitbox.height);
     }
+    
+    //healthBar Render
+    //bar Border
+    surf.fillStyle = "black";
+    surf.fillRect(this.healthBar.x - 1, this.healthBar.y -1, this.healthBar.width + 2, this.healthBar.height+ 2);
+    //bar Background
+    surf.fillStyle = "#444";
+    surf.fillRect(this.healthBar.x, this.healthBar.y, this.healthBar.width, this.healthBar.height);
+    //bar fill
+    const maxHealth = 200;
+    const hpWidth = Math.max(0, (this.healthBar.width / maxHealth) * this.health);
+    surf.fillStyle = "green";
+    surf.fillRect(this.healthBar.x, this.healthBar.y, hpWidth, this.healthBar.height);
   }
   
   jump()
@@ -1307,7 +1331,7 @@ class Player extends PhysicsEntity {
 }
 
 // ----- GAME ----------------------
-
+ 
 class Game {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -1331,7 +1355,8 @@ class Game {
     this.transitionSurf.height = this.virtualHeight;
     this.tCtx = this.transitionSurf.getContext("2d");
     this.running = false;
-    this.currentLevel = 0;
+    
+    this.currentLevel = 3;
 
     this.movement = [false, false];
     
@@ -1351,11 +1376,12 @@ class Game {
       clouds: await loadImages("clouds", 1),
       enemyidle: new Animation(await loadImages("entities/enemy/idle", 15), 6),
       enemyrun: new Animation(await loadImages("entities/enemy/run", 7), 4),
+      healthBar: applyColorKey(await loadImg("entities/player1/healthBar.png"), { r: 0, g: 0, b: 0 }),
       playeridle: new Animation(await cutImages("entities/player1/idle.png", 14), 6),
       playerrun: new Animation(await cutImages("entities/player1/run.png", 8), 7),
       playerjump: new Animation(await cutImages("entities/player1/jump.png", 3), 24),
       playerdash: new Animation(await cutImages("entities/player1/dash.png", 7), 7),
-      playerdeath: new Animation(await cutImages("entities/player1/death.png", 10), 7),
+      playerdeath: new Animation(await cutImages("entities/player1/death.png", 10), 7, false),
       playerhurt: new Animation(await cutImages("entities/player1/hurt.png", 4), 8, false),
       playerattack1: new Animation(await cutImages("entities/player1/attack1.png", 5), 8),
       playerattack2: new Animation(await cutImages("entities/player1/attack2.png", 5), 8),
